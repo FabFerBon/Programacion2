@@ -1,0 +1,856 @@
+Afton Rb
+
+Imports MySqlConnector
+Imports System.Data
+
+
+
+Public Class Form1
+
+    ' Cadena de conexión con la base de datos
+    Private cadenaConexion As String = "Server=localhost;Port=3306;Database=aftonrobotics;User ID=root;Password=;"
+
+    ' Variable para la conexión
+    Private conexion As MySqlConnection
+
+    ' Tabla que se encuentra seleccionada
+    Private tablaActual As String = ""
+
+    ' ID del registro seleccionado ---- Registro seleccionado para eliminar o modificar
+    Private idSeleccionado As Integer = 0
+
+    ' Configuración inicial del formulario
+    Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+        Me.Text = "Afton Robotics"
+
+        dgvRegistros.ReadOnly = True
+        dgvRegistros.AllowUserToAddRows = False
+        dgvRegistros.SelectionMode = DataGridViewSelectionMode.FullRowSelect
+        dgvRegistros.MultiSelect = False
+        dgvRegistros.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+
+    End Sub
+
+    ' Función para conectar con MySQL
+    Private Function ConectarBD() As Boolean
+
+        Try
+            conexion = New MySqlConnection(cadenaConexion)
+            conexion.Open()
+
+            Return True
+
+        Catch ex As Exception
+
+            MessageBox.Show("Error de conexión: " & ex.Message,
+                            "Afton Robotics",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error)
+
+            Return False
+
+        End Try
+
+    End Function
+
+
+
+    ' Botón para comprobar la conexión
+    Private Sub btnConexion_Click(sender As Object, e As EventArgs) Handles btnConexion.Click
+
+        If ConectarBD() Then
+
+            MessageBox.Show("Conexión exitosa con la base de datos.",
+                            "Afton Robotics",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information)
+
+            conexion.Close()
+
+        End If
+
+    End Sub
+
+
+    ' CONSULTA Y VISUALIZACIÓN DE REGISTROS
+
+    Private Sub MostrarRegistros(nombreTabla As String)
+
+        Try
+
+            Using conexion As New MySqlConnection(cadenaConexion)
+
+                conexion.Open()
+
+                ' Consultar todos los campos de la tabla
+                Dim consulta As String = "SELECT * FROM " & nombreTabla
+
+                Using comando As New MySqlCommand(consulta, conexion)
+
+                    Using adaptador As New MySqlDataAdapter(comando)
+
+                        Dim tabla As New DataTable()
+
+                        adaptador.Fill(tabla)
+
+                        ' Mostrar los datos en el DataGridView
+                        dgvRegistros.AutoGenerateColumns = True
+                        dgvRegistros.DataSource = tabla
+
+                        ' Asegurar que el ID sea visible y aparezca primero
+                        For Each columna As DataGridViewColumn In dgvRegistros.Columns
+
+                            If columna.Name.StartsWith("id_", StringComparison.OrdinalIgnoreCase) Then
+
+                                columna.Visible = True
+                                columna.DisplayIndex = 0
+
+                                Exit For
+
+                            End If
+
+                        Next
+
+                    End Using
+
+                End Using
+
+            End Using
+
+        Catch ex As Exception
+
+            MessageBox.Show("Error al consultar: " & ex.Message,
+                        "Afton Robotics",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error)
+
+        End Try
+
+    End Sub
+
+
+
+
+
+
+
+
+
+
+    ' Función para configurar los campos según la tabla seleccionada
+    Private Sub ConfigurarCampos(nombreTabla As String)
+
+        tablaActual = nombreTabla
+        idSeleccionado = 0               'quita la seleccion al cambiar de tabla
+
+
+        ' Limpiar los cuadros de texto
+        txtCampo1.Clear()
+        txtCampo2.Clear()
+        txtCampo3.Clear()
+        txtCampo4.Clear()
+
+        ' Cambiar los nombres de las etiquetas
+        Select Case nombreTabla
+
+            Case "clientes"
+
+                lblCampo1.Text = "Nombre:"
+                lblCampo2.Text = "Apellido:"
+                lblCampo3.Text = "Teléfono:"
+                lblCampo4.Text = "Dirección:"
+
+            Case "materia"
+
+                lblCampo1.Text = "Clave:"
+                lblCampo2.Text = "Nombre:"
+                lblCampo3.Text = "Semestre:"
+                lblCampo4.Text = "ID Carrera:"
+
+            Case "inventario"
+
+                lblCampo1.Text = "Nombre:"
+                lblCampo2.Text = "Cantidad:"
+                lblCampo3.Text = "Precio:"
+                lblCampo4.Text = "Categoría:"
+
+            Case "carrera"
+
+                lblCampo1.Text = "Clave:"
+                lblCampo2.Text = "Nombre:"
+                lblCampo3.Text = "Duración:"
+                lblCampo4.Text = "Modalidad:"
+
+        End Select
+
+    End Sub
+
+
+    ' EVENTO PARA SELECCIONAR REGISTROS DEL DATAGRIDVIEW
+    ' Al hacer clic en una fila, sus datos aparecen en los TextBox.
+
+    Private Sub dgvRegistros_CellClick(sender As Object, e As DataGridViewCellEventArgs) Handles dgvRegistros.CellClick
+
+        ' Validar que se haya seleccionado una fila válida
+        ' y que exista una tabla seleccionada.
+        If e.RowIndex < 0 OrElse tablaActual = "" Then
+            Return
+        End If
+
+        ' Obtener la fila seleccionada del DataGridView.
+        Dim fila As DataGridViewRow = dgvRegistros.Rows(e.RowIndex)
+
+        ' Evitar seleccionar filas nuevas o vacías.
+        If fila.IsNewRow Then
+            Return
+        End If
+
+        Try
+
+            ' Identificar qué tabla está seleccionada
+            ' para obtener sus respectivos datos.
+            Select Case tablaActual
+
+                Case "clientes"
+
+                    ' Guardar el ID del cliente seleccionado.
+                    idSeleccionado = Convert.ToInt32(fila.Cells("Id_Cliente").Value)
+
+                    ' Pasar los datos del cliente a los TextBox.
+                    txtCampo1.Text = fila.Cells("nombre").Value.ToString()
+                    txtCampo2.Text = fila.Cells("apellido").Value.ToString()
+                    txtCampo3.Text = fila.Cells("telefono").Value.ToString()
+                    txtCampo4.Text = fila.Cells("direccion").Value.ToString()
+
+                Case "materia"
+
+                    ' Guardar el ID de la materia seleccionada.
+                    idSeleccionado = Convert.ToInt32(fila.Cells("id_materia").Value)
+
+                    ' Mostrar los datos de la materia.
+                    txtCampo1.Text = fila.Cells("clave").Value.ToString()
+                    txtCampo2.Text = fila.Cells("nombre").Value.ToString()
+                    txtCampo3.Text = fila.Cells("semestre").Value.ToString()
+                    txtCampo4.Text = fila.Cells("id_carrera").Value.ToString()
+
+                Case "inventario"
+
+                    ' Guardar el ID del producto seleccionado.
+                    idSeleccionado = Convert.ToInt32(fila.Cells("id_producto").Value)
+
+                    ' Mostrar los datos del producto.
+                    txtCampo1.Text = fila.Cells("nombre").Value.ToString()
+                    txtCampo2.Text = fila.Cells("cantidad").Value.ToString()
+                    txtCampo3.Text = fila.Cells("precio").Value.ToString()
+                    txtCampo4.Text = fila.Cells("categoria").Value.ToString()
+
+                Case "carrera"
+
+                    ' Guardar el ID de la carrera seleccionada.
+                    idSeleccionado = Convert.ToInt32(fila.Cells("id_carrera").Value)
+
+                    ' Mostrar los datos de la carrera.
+                    txtCampo1.Text = fila.Cells("clave").Value.ToString()
+                    txtCampo2.Text = fila.Cells("nombre").Value.ToString()
+                    txtCampo3.Text = fila.Cells("duracion").Value.ToString()
+                    txtCampo4.Text = fila.Cells("modalidad").Value.ToString()
+
+            End Select
+
+        Catch ex As Exception
+
+            ' Mostrar un mensaje si ocurre algún error
+            ' al obtener los datos de la fila seleccionada.
+            MessageBox.Show("Error al seleccionar el registro: " & ex.Message,
+                        "Afton Robotics",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error)
+
+        End Try
+
+    End Sub
+
+
+
+    ' Función para modificar registros
+    Private Sub ModificarRegistro()
+
+        If tablaActual = "" OrElse idSeleccionado = 0 Then
+
+            MessageBox.Show("Primero selecciona un registro de la tabla.",
+                        "Afton Robotics",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning)
+            Return
+
+        End If
+
+        If String.IsNullOrWhiteSpace(txtCampo1.Text) OrElse
+       String.IsNullOrWhiteSpace(txtCampo2.Text) OrElse
+       String.IsNullOrWhiteSpace(txtCampo3.Text) OrElse
+       String.IsNullOrWhiteSpace(txtCampo4.Text) Then
+
+            MessageBox.Show("Completa todos los campos.",
+                        "Afton Robotics",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning)
+            Return
+
+        End If
+
+        Try
+
+            Using conexionNueva As New MySqlConnection(cadenaConexion)
+
+                conexionNueva.Open()
+
+                Dim consulta As String = ""
+
+                Using comando As New MySqlCommand()
+
+                    comando.Connection = conexionNueva
+
+                    Select Case tablaActual
+
+                        Case "clientes"
+
+                            consulta = "UPDATE clientes SET nombre=@nombre, apellido=@apellido, telefono=@telefono, direccion=@direccion WHERE Id_Cliente=@id"
+
+                            comando.Parameters.AddWithValue("@nombre", txtCampo1.Text.Trim())
+                            comando.Parameters.AddWithValue("@apellido", txtCampo2.Text.Trim())
+                            comando.Parameters.AddWithValue("@telefono", txtCampo3.Text.Trim())
+                            comando.Parameters.AddWithValue("@direccion", txtCampo4.Text.Trim())
+
+                        Case "materia"
+
+                            Dim semestre As Integer
+                            Dim idCarrera As Integer
+
+                            If Not Integer.TryParse(txtCampo3.Text, semestre) OrElse
+                           Not Integer.TryParse(txtCampo4.Text, idCarrera) Then
+
+                                MessageBox.Show("El semestre y el ID de carrera deben ser números.")
+                                Return
+
+                            End If
+
+                            consulta = "UPDATE materia SET clave=@clave, nombre=@nombre, semestre=@semestre, id_carrera=@id_carrera WHERE id_materia=@id"
+
+                            comando.Parameters.AddWithValue("@clave", txtCampo1.Text.Trim())
+                            comando.Parameters.AddWithValue("@nombre", txtCampo2.Text.Trim())
+                            comando.Parameters.AddWithValue("@semestre", semestre)
+                            comando.Parameters.AddWithValue("@id_carrera", idCarrera)
+
+                        Case "inventario"
+
+                            Dim cantidad As Integer
+                            Dim precio As Decimal
+
+                            If Not Integer.TryParse(txtCampo2.Text, cantidad) OrElse
+                           Not Decimal.TryParse(txtCampo3.Text, precio) Then
+
+                                MessageBox.Show("La cantidad y el precio deben ser numéricos.")
+                                Return
+
+                            End If
+
+                            consulta = "UPDATE inventario SET nombre=@nombre, cantidad=@cantidad, precio=@precio, categoria=@categoria WHERE id_producto=@id"
+
+                            comando.Parameters.AddWithValue("@nombre", txtCampo1.Text.Trim())
+                            comando.Parameters.AddWithValue("@cantidad", cantidad)
+                            comando.Parameters.AddWithValue("@precio", precio)
+                            comando.Parameters.AddWithValue("@categoria", txtCampo4.Text.Trim())
+
+                        Case "carrera"
+
+                            Dim duracion As Integer
+
+                            If Not Integer.TryParse(txtCampo3.Text, duracion) Then
+
+                                MessageBox.Show("La duración debe ser un número entero.")
+                                Return
+
+                            End If
+
+                            consulta = "UPDATE carrera SET clave=@clave, nombre=@nombre, duracion=@duracion, modalidad=@modalidad WHERE id_carrera=@id"
+
+                            comando.Parameters.AddWithValue("@clave", txtCampo1.Text.Trim())
+                            comando.Parameters.AddWithValue("@nombre", txtCampo2.Text.Trim())
+                            comando.Parameters.AddWithValue("@duracion", duracion)
+                            comando.Parameters.AddWithValue("@modalidad", txtCampo4.Text.Trim())
+
+                    End Select
+
+                    comando.Parameters.AddWithValue("@id", idSeleccionado)
+                    comando.CommandText = consulta
+
+                    comando.ExecuteNonQuery()
+
+                End Using
+
+            End Using
+
+            MessageBox.Show("Registro modificado correctamente.",
+                        "Afton Robotics",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information)
+
+            MostrarRegistros(tablaActual)
+            LimpiarCampos()
+
+        Catch ex As Exception
+
+            MessageBox.Show("Error al modificar: " & ex.Message,
+                        "Afton Robotics",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error)
+
+        End Try
+
+    End Sub
+
+
+
+    ' Busqueda De Registros Por ID
+
+    Private Sub BuscarRegistro()
+
+        If tablaActual = "" Then
+            MessageBox.Show("Primero selecciona una tabla.")
+            Return
+        End If
+
+        Dim id As Integer
+
+        If Not Integer.TryParse(txtBuscarID.Text, id) Then
+            MessageBox.Show("Ingresa un ID válido.")
+            Return
+        End If
+
+        Try
+
+            Using conexionNueva As New MySqlConnection(cadenaConexion)
+
+                conexionNueva.Open()
+
+                Dim columnaID As String = ""
+
+                Select Case tablaActual
+
+                    Case "clientes"
+                        columnaID = "id_cliente"
+
+                    Case "materia"
+                        columnaID = "id_materia"
+
+                    Case "inventario"
+                        columnaID = "id_producto"
+
+                    Case "carrera"
+                        columnaID = "id_carrera"
+
+                End Select
+
+                Dim consulta As String = "SELECT * FROM " & tablaActual &
+                                     " WHERE " & columnaID & " = @id"
+
+                Using comando As New MySqlCommand(consulta, conexionNueva)
+
+                    comando.Parameters.AddWithValue("@id", id)
+
+                    Using lector As MySqlDataReader = comando.ExecuteReader()
+
+                        Dim resultado As New DataTable()
+
+                        resultado.Load(lector)
+
+                        If resultado.Rows.Count > 0 Then
+
+                            Dim fila As DataRow = resultado.Rows(0)
+
+                            ' Mostrar resultado en la tabla
+                            dgvRegistros.DataSource = resultado
+
+                            ' Guardar ID seleccionado
+                            idSeleccionado = id
+
+                            ' Mostrar datos en los TextBox
+                            Select Case tablaActual
+
+                                Case "clientes"
+
+                                    txtCampo1.Text = fila("nombre").ToString()
+                                    txtCampo2.Text = fila("apellido").ToString()
+                                    txtCampo3.Text = fila("telefono").ToString()
+                                    txtCampo4.Text = fila("direccion").ToString()
+
+                                Case "materia"
+
+                                    txtCampo1.Text = fila("clave").ToString()
+                                    txtCampo2.Text = fila("nombre").ToString()
+                                    txtCampo3.Text = fila("semestre").ToString()
+                                    txtCampo4.Text = fila("id_carrera").ToString()
+
+                                Case "inventario"
+
+                                    txtCampo1.Text = fila("nombre").ToString()
+                                    txtCampo2.Text = fila("cantidad").ToString()
+                                    txtCampo3.Text = fila("precio").ToString()
+                                    txtCampo4.Text = fila("categoria").ToString()
+
+                                Case "carrera"
+
+                                    txtCampo1.Text = fila("clave").ToString()
+                                    txtCampo2.Text = fila("nombre").ToString()
+                                    txtCampo3.Text = fila("duracion").ToString()
+                                    txtCampo4.Text = fila("modalidad").ToString()
+
+                            End Select
+
+                        Else
+
+                            MessageBox.Show("No se encontró el registro.")
+
+                            dgvRegistros.DataSource = Nothing
+                            LimpiarCampos()
+
+                        End If
+
+                    End Using
+
+                End Using
+
+            End Using
+
+        Catch ex As Exception
+
+            MessageBox.Show("Error al buscar: " & ex.Message,
+                        "Afton Robotics",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error)
+
+        End Try
+
+    End Sub
+
+
+
+
+
+    ' Función para eliminar registros
+    Private Sub EliminarRegistro()
+
+        If tablaActual = "" OrElse idSeleccionado = 0 Then
+
+            MessageBox.Show("Primero selecciona un registro de la tabla.",
+                        "Afton Robotics",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning)
+            Return
+
+        End If
+
+        Dim respuesta As DialogResult
+
+        respuesta = MessageBox.Show("¿Estás seguro de eliminar este registro?",
+                                "Afton Robotics",
+                                MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Question)
+
+        If respuesta = DialogResult.No Then
+            Return
+        End If
+
+        Try
+
+            Using conexionNueva As New MySqlConnection(cadenaConexion)
+
+                conexionNueva.Open()
+
+                Dim consulta As String = ""
+
+                Select Case tablaActual
+
+                    Case "clientes"
+                        consulta = "DELETE FROM clientes WHERE Id_Cliente=@id"
+                        consulta = "DELETE FROM clientes WHERE Id_Cliente=@id"
+
+                    Case "materia"
+                        consulta = "DELETE FROM materia WHERE id_materia=@id"
+
+                    Case "inventario"
+                        consulta = "DELETE FROM inventario WHERE id_producto=@id"
+
+                    Case "carrera"
+                        consulta = "DELETE FROM carrera WHERE id_carrera=@id"
+
+                End Select
+
+                Using comando As New MySqlCommand(consulta, conexionNueva)
+
+                    comando.Parameters.AddWithValue("@id", idSeleccionado)
+
+                    comando.ExecuteNonQuery()
+
+                End Using
+
+            End Using
+
+            MessageBox.Show("Registro eliminado correctamente.",
+                        "Afton Robotics",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information)
+
+            MostrarRegistros(tablaActual)
+            LimpiarCampos()
+
+        Catch ex As Exception
+
+            MessageBox.Show("Error al eliminar: " & ex.Message,
+                        "Afton Robotics",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error)
+
+        End Try
+
+    End Sub
+
+
+
+    ' Función para guardar registros en MySQL
+    Private Sub GuardarRegistro()
+
+        If tablaActual = "" Then
+            MessageBox.Show("Primero selecciona una tabla.",
+                        "Afton Robotics",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning)
+            Return
+        End If
+
+        ' Validar que ningún campo esté vacío
+        If String.IsNullOrWhiteSpace(txtCampo1.Text) OrElse
+       String.IsNullOrWhiteSpace(txtCampo2.Text) OrElse
+       String.IsNullOrWhiteSpace(txtCampo3.Text) OrElse
+       String.IsNullOrWhiteSpace(txtCampo4.Text) Then
+
+            MessageBox.Show("Completa todos los campos.",
+                        "Afton Robotics",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning)
+            Return
+
+        End If
+
+        Try
+
+            Using conexionNueva As New MySqlConnection(cadenaConexion)
+
+                conexionNueva.Open()
+
+                Dim consulta As String = ""
+
+                Using comando As New MySqlCommand()
+
+                    comando.Connection = conexionNueva
+
+                    ' Determinar la tabla y preparar la consulta
+                    Select Case tablaActual
+
+                        Case "clientes"
+
+                            consulta = "INSERT INTO clientes (nombre, apellido, telefono, direccion) VALUES (@nombre, @apellido, @telefono, @direccion)"
+
+                            comando.Parameters.AddWithValue("@nombre", txtCampo1.Text.Trim())
+                            comando.Parameters.AddWithValue("@apellido", txtCampo2.Text.Trim())
+                            comando.Parameters.AddWithValue("@telefono", txtCampo3.Text.Trim())
+                            comando.Parameters.AddWithValue("@direccion", txtCampo4.Text.Trim())
+
+                        Case "materia"
+
+                            Dim semestre As Integer
+                            Dim idCarrera As Integer
+
+                            If Not Integer.TryParse(txtCampo3.Text, semestre) OrElse
+                           Not Integer.TryParse(txtCampo4.Text, idCarrera) Then
+
+                                MessageBox.Show("El semestre y el ID de carrera deben ser números.",
+                                            "Afton Robotics",
+                                            MessageBoxButtons.OK,
+                                            MessageBoxIcon.Warning)
+                                Return
+
+                            End If
+
+                            consulta = "INSERT INTO materia (clave, nombre, semestre, id_carrera) VALUES (@clave, @nombre, @semestre, @id_carrera)"
+
+                            comando.Parameters.AddWithValue("@clave", txtCampo1.Text.Trim())
+                            comando.Parameters.AddWithValue("@nombre", txtCampo2.Text.Trim())
+                            comando.Parameters.AddWithValue("@semestre", semestre)
+                            comando.Parameters.AddWithValue("@id_carrera", idCarrera)
+
+                        Case "inventario"
+
+                            Dim cantidad As Integer
+                            Dim precio As Decimal
+
+                            If Not Integer.TryParse(txtCampo2.Text, cantidad) OrElse
+                           Not Decimal.TryParse(txtCampo3.Text, precio) Then
+
+                                MessageBox.Show("La cantidad debe ser un número entero y el precio debe ser numérico.",
+                                            "Afton Robotics",
+                                            MessageBoxButtons.OK,
+                                            MessageBoxIcon.Warning)
+                                Return
+
+                            End If
+
+                            consulta = "INSERT INTO inventario (nombre, cantidad, precio, categoria) VALUES (@nombre, @cantidad, @precio, @categoria)"
+
+                            comando.Parameters.AddWithValue("@nombre", txtCampo1.Text.Trim())
+                            comando.Parameters.AddWithValue("@cantidad", cantidad)
+                            comando.Parameters.AddWithValue("@precio", precio)
+                            comando.Parameters.AddWithValue("@categoria", txtCampo4.Text.Trim())
+
+                        Case "carrera"
+
+                            Dim duracion As Integer
+
+                            If Not Integer.TryParse(txtCampo3.Text, duracion) Then
+
+                                MessageBox.Show("La duración debe ser un número entero.",
+                                            "Afton Robotics",
+                                            MessageBoxButtons.OK,
+                                            MessageBoxIcon.Warning)
+                                Return
+
+                            End If
+
+                            consulta = "INSERT INTO carrera (clave, nombre, duracion, modalidad) VALUES (@clave, @nombre, @duracion, @modalidad)"
+
+                            comando.Parameters.AddWithValue("@clave", txtCampo1.Text.Trim())
+                            comando.Parameters.AddWithValue("@nombre", txtCampo2.Text.Trim())
+                            comando.Parameters.AddWithValue("@duracion", duracion)
+                            comando.Parameters.AddWithValue("@modalidad", txtCampo4.Text.Trim())
+
+                    End Select
+
+                    comando.CommandText = consulta
+
+                    ' Ejecutar el registro
+                    comando.ExecuteNonQuery()
+
+                End Using
+
+            End Using
+
+            MessageBox.Show("Registro guardado correctamente.",
+                        "Afton Robotics",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information)
+
+            ' Actualizar la tabla y limpiar los campos
+            MostrarRegistros(tablaActual)
+
+            txtCampo1.Clear()
+            txtCampo2.Clear()
+            txtCampo3.Clear()
+            txtCampo4.Clear()
+
+        Catch ex As Exception
+
+            MessageBox.Show("Error al guardar el registro: " & ex.Message,
+                        "Afton Robotics",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error)
+
+        End Try
+
+    End Sub
+
+    ' Función para limpiar los campos
+    Private Sub LimpiarCampos()
+
+        txtCampo1.Clear()
+        txtCampo2.Clear()
+        txtCampo3.Clear()
+        txtCampo4.Clear()
+
+        idSeleccionado = 0
+
+        dgvRegistros.ClearSelection()
+
+    End Sub
+
+
+
+    ' Botón para mostrar la tabla Clientes
+    Private Sub btnClientes_Click(sender As Object, e As EventArgs) Handles btnClientes.Click
+
+        ConfigurarCampos("clientes")
+        MostrarRegistros("clientes")
+
+    End Sub
+
+    ' Botón para mostrar la tabla Materia
+    Private Sub btnMateria_Click(sender As Object, e As EventArgs) Handles btnMateria.Click
+
+        ConfigurarCampos("materia")
+        MostrarRegistros("materia")
+
+    End Sub
+
+    ' Botón para mostrar la tabla Inventario
+    Private Sub btnInventario_Click(sender As Object, e As EventArgs) Handles btnInventario.Click
+
+        ConfigurarCampos("inventario")
+        MostrarRegistros("inventario")
+
+    End Sub
+
+    ' Botón para mostrar la tabla Carrera
+    Private Sub btnCarrera_Click(sender As Object, e As EventArgs) Handles btnCarrera.Click
+
+        ConfigurarCampos("carrera")
+        MostrarRegistros("carrera")
+
+    End Sub
+
+    ' Botón para guardar registros
+    Private Sub btnGuardar_Click(sender As Object, e As EventArgs) Handles btnGuardar.Click
+
+        GuardarRegistro()
+
+    End Sub
+
+    ' Botón para modificar registros
+    Private Sub btnModificar_Click(sender As Object, e As EventArgs) Handles btnModificar.Click
+
+        ModificarRegistro()
+
+    End Sub
+
+    ' Botón para eliminar registros
+    Private Sub btnEliminar_Click(sender As Object, e As EventArgs) Handles btnEliminar.Click
+
+        EliminarRegistro()
+
+    End Sub
+
+    ' Botón para limpiar los campos
+    Private Sub btnLimpiar_Click(sender As Object, e As EventArgs) Handles btnLimpiar.Click
+
+        LimpiarCampos()
+
+    End Sub
+
+    ' Botón para buscar registros por ID
+    Private Sub btnBuscar_Click(sender As Object, e As EventArgs) Handles btnBuscar.Click
+
+        BuscarRegistro()
+
+    End Sub
+
+
+End Class
